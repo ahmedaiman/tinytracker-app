@@ -221,7 +221,7 @@ class Child extends BaseModel
      */
     public function meals()
     {
-        return $this->hasMany(Meal::class)->orderBy('consumed_at', 'desc');
+        return $this->hasMany(Meal::class)->orderBy('meal_time', 'desc');
     }
 
     /**
@@ -229,7 +229,7 @@ class Child extends BaseModel
      */
     public function snacks()
     {
-        return $this->hasMany(Snack::class)->orderBy('consumed_at', 'desc');
+        return $this->hasMany(Snack::class)->orderBy('consumed_at', 'desc'); // Keeping as is for now since we haven't checked the snacks table yet
     }
 
     /**

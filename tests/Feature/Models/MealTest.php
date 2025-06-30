@@ -30,7 +30,7 @@ class MealTest extends TestCase
             'food_desc' => 'Test meal',
             'carbs_grams' => 50,
             'sugars_grams' => 20,
-            'status' => 'logged',
+            'status' => 'completed',
             'is_override' => false,
         ]);
 
@@ -38,7 +38,7 @@ class MealTest extends TestCase
         $this->assertEquals('breakfast', $meal->meal_type);
         $this->assertEquals(100, $meal->pre_bg);
         $this->assertEquals('Test meal', $meal->food_desc);
-        $this->assertEquals('logged', $meal->status);
+        $this->assertEquals('completed', $meal->status);
         $this->assertFalse($meal->is_override);
     }
 
@@ -69,7 +69,7 @@ class MealTest extends TestCase
             'child_id' => $child->id,
             'user_id' => $user->id,
             'meal_type' => 'breakfast',
-            'status' => 'logged'
+            'status' => 'completed'
         ]);
         
         // Create a lunch meal
@@ -77,7 +77,7 @@ class MealTest extends TestCase
             'child_id' => $child->id,
             'user_id' => $user->id,
             'meal_type' => 'lunch',
-            'status' => 'logged'
+            'status' => 'pending'
         ]);
         
         // Test the scope
@@ -98,10 +98,10 @@ class MealTest extends TestCase
         $child = Child::factory()->create(['user_id' => $user->id]);
         
         // Create meals with different statuses
-        $loggedMeal = Meal::factory()->create([
+        $completedMeal = Meal::factory()->create([
             'child_id' => $child->id,
             'user_id' => $user->id,
-            'status' => 'logged'
+            'status' => 'completed'
         ]);
         
         $pendingMeal = Meal::factory()->create([
@@ -111,9 +111,9 @@ class MealTest extends TestCase
         ]);
         
         // Test filtering by status
-        $loggedMeals = Meal::where('status', 'logged')->get();
-        $this->assertCount(1, $loggedMeals);
-        $this->assertEquals('logged', $loggedMeals->first()->status);
+        $completedMeals = Meal::where('status', 'completed')->get();
+        $this->assertCount(1, $completedMeals);
+        $this->assertEquals('completed', $completedMeals->first()->status);
         
         $pendingMeals = Meal::where('status', 'pending')->get();
         $this->assertCount(1, $pendingMeals);

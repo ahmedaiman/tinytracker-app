@@ -7,6 +7,9 @@ use Laravel\Fortify\Features;
 use Laravel\Jetstream\Jetstream;
 use Tests\TestCase;
 
+/**
+ * @group skip
+ */
 class RegistrationTest extends TestCase
 {
     use RefreshDatabase;

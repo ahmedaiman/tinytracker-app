@@ -111,17 +111,21 @@ return new class extends Migration
             // Drop foreign key constraint for insulin_type_id if it exists
             if (Schema::hasColumn('random_checks', 'insulin_type_id')) {
                 Schema::table('random_checks', function (Blueprint $table) {
-                    $sql = "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " .
-                           "WHERE TABLE_NAME = 'random_checks' AND COLUMN_NAME = 'insulin_type_id' " .
-                           "AND REFERENCED_TABLE_NAME IS NOT NULL";
+                    // Check if the foreign key exists using a raw query
+                    $foreignKeyExists = DB::select(
+                        "SELECT COUNT(*) as count FROM information_schema.TABLE_CONSTRAINTS 
+                        WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                        AND TABLE_NAME = 'random_checks' 
+                        AND CONSTRAINT_NAME = 'random_checks_insulin_type_id_foreign' 
+                        AND CONSTRAINT_TYPE = 'FOREIGN KEY'"
+                    );
                     
-                    $foreignKeys = DB::select($sql);
-                    
-                    foreach ($foreignKeys as $foreignKey) {
-                        $constraintName = $foreignKey->CONSTRAINT_NAME;
-                        $table->dropForeign($constraintName);
+                    // Only try to drop the foreign key if it exists
+                    if ($foreignKeyExists[0]->count > 0) {
+                        $table->dropForeign('random_checks_insulin_type_id_foreign');
                     }
                     
+                    // Now drop the column
                     $table->dropColumn('insulin_type_id');
                 });
             }

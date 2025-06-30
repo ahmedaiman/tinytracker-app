@@ -14,21 +14,21 @@ class MealFactory extends Factory
     public function definition()
     {
         $mealTime = $this->faker->dateTimeBetween('-1 month', 'now');
-        $preMealBg = $this->faker->numberBetween(70, 200);
-        $postMealBg = $preMealBg + $this->faker->numberBetween(20, 80);
+        $preBg = $this->faker->numberBetween(70, 200);
+        $postBg = $preBg + $this->faker->numberBetween(20, 80);
         
         return [
             'child_id' => Child::factory(),
             'user_id' => User::factory(),
-            'meal_type' => $this->faker->randomElement(['breakfast', 'lunch', 'dinner', 'snack']),
+            'meal_type' => $this->faker->randomElement(['breakfast', 'lunch', 'dinner', 'other']),
             'meal_time' => $mealTime,
-            'pre_bg' => $preMealBg,
-            'post_bg' => $postMealBg,
+            'pre_bg' => $preBg,
+            'post_bg' => $postBg,
             'post_meal_bg_time' => (clone $mealTime)->modify('+2 hours'),
             'food_desc' => $this->faker->sentence,
             'carbs_grams' => $this->faker->numberBetween(10, 100),
             'sugars_grams' => $this->faker->numberBetween(5, 50),
-            'status' => 'logged',
+            'status' => $this->faker->randomElement(['pending', 'completed']),
             'is_override' => false,
             'notes' => $this->faker->optional()->sentence,
         ];
