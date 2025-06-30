@@ -95,6 +95,8 @@ class Appointment extends BaseModel
      */
     protected $fillable = [
         'child_id',
+        'user_id',
+        'doctor_id',
         'title',
         'description',
         'start_time',
@@ -109,12 +111,43 @@ class Appointment extends BaseModel
         'notification_preference',
         'reminder_minutes_before',
         'color',
-        'is_all_day',
+        'all_day',
         'meeting_link',
         'notes',
         'created_by',
         'updated_by',
+        'metadata',
     ];
+
+    /**
+     * The "booting" method of the model.
+     *
+     * @return void
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Ensure metadata is always an array when setting it
+        static::saving(function ($model) {
+            if (is_null($model->metadata)) {
+                $model->metadata = [];
+            } elseif (is_string($model->metadata)) {
+                $model->metadata = json_decode($model->metadata, true) ?: [];
+            } elseif (!is_array($model->metadata)) {
+                $model->metadata = (array) $model->metadata;
+            }
+        });
+
+        // Ensure metadata is properly cast to array after retrieving
+        static::retrieved(function ($model) {
+            if (is_string($model->metadata)) {
+                $model->metadata = json_decode($model->metadata, true) ?: [];
+            } elseif (is_null($model->metadata)) {
+                $model->metadata = [];
+            }
+        });
+    }
 
     /**
      * The attributes that should be cast.
@@ -128,7 +161,11 @@ class Appointment extends BaseModel
             'end_time' => 'datetime',
             'recurrence_end_date' => 'date',
             'recurrence_exdates' => 'array',
+            'recurrence_days' => 'array',
+            'metadata' => 'array',
             'is_all_day' => 'boolean',
+            'reminder_sent' => 'boolean',
+            'telegram_notification_sent' => 'boolean',
         ]);
     }
 
@@ -151,6 +188,22 @@ class Appointment extends BaseModel
     public function child(): BelongsTo
     {
         return $this->belongsTo(Child::class)->withDefault();
+    }
+    
+    /**
+     * Get the user (guardian) that owns the appointment.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+    
+    /**
+     * Get the doctor associated with the appointment.
+     */
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
     }
 
     /**
@@ -211,7 +264,6 @@ class Appointment extends BaseModel
     {
         return $query->where('start_time', '<', now())
                     ->where('start_time', '>=', now()->subDays($days))
-                    ->whereNotIn('status', [self::STATUS_CANCELLED])
                     ->orderBy('start_time', 'desc');
     }
 
@@ -284,15 +336,37 @@ class Appointment extends BaseModel
      */
     public function scopeNeedsReminder($query)
     {
-        return $query->where('notification_preference', '!=', self::NOTIFICATION_NONE)
-                    ->where('status', self::STATUS_SCHEDULED)
+        return $query->where('reminder_sent', false)
+                    ->where('status', self::STATUS_CONFIRMED)
                     ->where('start_time', '>', now())
-                    ->where(function($q) {
-                        $q->doesntHave('reminders')
-                          ->orWhereHas('reminders', function($q) {
-                              $q->where('status', AppointmentReminder::STATUS_FAILED);
-                          });
-                    });
+                    ->where('start_time', '<=', now()->addHours(24));
+    }
+    
+    /**
+     * Scope a query to only include appointments between the given dates.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  string|\Carbon\Carbon  $startDate
+     * @param  string|\Carbon\Carbon  $endDate
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeBetweenDates($query, $startDate, $endDate)
+    {
+        $startDate = $startDate instanceof \Carbon\Carbon ? $startDate : \Carbon\Carbon::parse($startDate)->startOfDay();
+        $endDate = $endDate instanceof \Carbon\Carbon ? $endDate : \Carbon\Carbon::parse($endDate)->endOfDay();
+        
+        return $query->whereBetween('start_time', [$startDate, $endDate]);
+    }
+    
+    /**
+     * Check if the appointment is upcoming.
+     * Alias for is_upcoming attribute for test compatibility.
+     *
+     * @return bool
+     */
+    public function isUpcoming(): bool
+    {
+        return $this->is_upcoming;
     }
 
     /**
@@ -355,15 +429,34 @@ class Appointment extends BaseModel
     }
 
     /**
-     * Cancel the appointment.
+     * Confirm the appointment.
+     *
+     * @return $this
      */
-    public function cancel(string $reason = null): void
+    public function confirm()
+    {
+        $this->status = self::STATUS_CONFIRMED;
+        $this->save();
+        
+        return $this;
+    }
+
+    /**
+     * Cancel the appointment.
+     *
+     * @param string|null $reason
+     * @return $this
+     */
+    public function cancel(?string $reason = null)
     {
         $this->status = self::STATUS_CANCELLED;
         
-        if ($reason) {
-            $this->notes = ($this->notes ? $this->notes . "\n\n" : '') . "Cancelled: " . $reason;
-        }
+        // Ensure metadata is an array before merging
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $this->metadata = array_merge($metadata, [
+            'cancellation_reason' => $reason,
+            'cancelled_at' => now()->toDateTimeString(),
+        ]);
         
         $this->save();
         
@@ -385,6 +478,14 @@ class Appointment extends BaseModel
         }
         
         $this->save();
+    }
+
+    /**
+     * Alias for markAsCompleted for backward compatibility with tests.
+     */
+    public function complete(string $notes = null): void
+    {
+        $this->markAsCompleted($notes);
     }
 
     /**
@@ -459,40 +560,69 @@ class Appointment extends BaseModel
     }
 
     /**
+     * Check if the appointment is recurring (alias for is_recurring attribute for test compatibility)
+     *
+     * @return bool
+     */
+    public function isRecurring(): bool
+    {
+        return $this->is_recurring;
+    }
+
+    /**
+     * Mark the telegram notification as sent
+     * 
+     * @return $this
+     */
+    public function markTelegramNotificationAsSent()
+    {
+        $this->telegram_notification_sent = true;
+        $this->telegram_notification_sent_at = now();
+        $this->save();
+        
+        // Refresh the model to ensure we have the latest data
+        $this->refresh();
+        
+        return $this;
+    }
+    
+    /**
      * Get the next occurrence of a recurring appointment.
      * Returns null if there are no more occurrences.
      */
     public function getNextOccurrence(): ?self
     {
-        if (!$this->recurrence_rule) {
+        if (!$this->recurrence_pattern) {
             return null;
         }
 
         try {
-            // Parse the RRULE
-            $rrule = new RRule($this->recurrence_rule);
+            $now = now();
+            $startTime = $this->start_time;
+            $endTime = $this->end_time;
+            $durationInMinutes = $startTime->diffInMinutes($endTime);
             
-            // Get the next occurrence after now
-            $nextDate = $rrule->getOccurrencesAfter(now(), true, 1);
+            // Handle different recurrence patterns
+            switch ($this->recurrence_pattern) {
+                case 'weekly':
+                    $nextDate = $this->calculateNextWeeklyOccurrence($now, $startTime);
+                    break;
+                // Add other recurrence patterns as needed
+                default:
+                    return null;
+            }
             
-            if (empty($nextDate)) {
+            // If no next date found or it's after the recurrence end date, return null
+            if (!$nextDate || ($this->recurrence_end_date && $nextDate->gt($this->recurrence_end_date))) {
                 return null;
             }
             
-            $nextDate = $nextDate[0];
+            // Create a clone of the appointment for the next occurrence
+            $nextAppointment = clone $this;
             
-            // Create a new appointment instance for the next occurrence
-            $nextAppointment = $this->replicate();
-            $nextAppointment->recurrence_parent_id = $this->id;
-            
-            // Calculate the duration in minutes between start and end times
-            $durationInMinutes = $this->start_time->diffInMinutes($this->end_time);
-            
-            // Set the start time to the next occurrence
+            // Set the start and end times for the next occurrence
             $nextAppointment->start_time = $nextDate;
-            
-            // Set the end time by adding the duration to the new start time
-            $nextAppointment->end_time = (clone $nextDate)->addMinutes($durationInMinutes);
+            $nextAppointment->end_time = $nextDate->copy()->addMinutes($durationInMinutes);
             
             return $nextAppointment;
             
@@ -501,6 +631,36 @@ class Appointment extends BaseModel
             return null;
         }
     }
+    
+    /**
+     * Calculate the next weekly occurrence based on the current time and start time.
+     *
+     * @param  \Carbon\Carbon  $now
+     * @param  \Carbon\Carbon  $startTime
+     * @return \Carbon\Carbon|null
+     */
+    protected function calculateNextWeeklyOccurrence($now, $startTime)
+    {
+        $currentDayOfWeek = $now->dayOfWeek;
+        $targetDayOfWeek = $startTime->dayOfWeek;
+        $nextDate = $now->copy()->setTimeFrom($startTime);
+        
+        // If today is the target day but the time has passed, or if it's a different day
+        if ($currentDayOfWeek === $targetDayOfWeek) {
+            if ($nextDate->gt($now)) {
+                return $nextDate;
+            }
+            // Move to next week
+            $nextDate->addWeek();
+        } else {
+            // Move to the next occurrence of the target day
+            $daysToAdd = ($targetDayOfWeek - $currentDayOfWeek + 7) % 7;
+            $nextDate->addDays($daysToAdd);
+        }
+        
+        // Ensure the time is set correctly
+        $nextDate->setTimeFrom($startTime);
+        
+        return $nextDate;
+    }
 }
-
-

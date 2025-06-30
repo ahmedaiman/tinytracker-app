@@ -156,15 +156,19 @@ class NoteTest extends TestCase
     /** @test */
     public function it_has_important_scope()
     {
+        // Clear existing notes to ensure a clean state
+        Note::query()->delete();
+        
         // Create 3 important notes and 2 regular ones
-        Note::factory()->count(3)->important()->create();
-        Note::factory()->count(2)->create();
+        $importantNotes = Note::factory()->count(3)->important()->create();
+        $regularNotes = Note::factory()->count(2)->create(['is_important' => false]);
         
-        $importantNotes = Note::where('is_important', true)->get();
-        $this->assertCount(3, $importantNotes);
+        // Verify the counts
+        $this->assertCount(3, Note::where('is_important', true)->get(), 'There should be 3 important notes');
+        $this->assertCount(2, Note::where('is_important', false)->get(), 'There should be 2 regular notes');
         
-        $regularNotes = Note::where('is_important', false)->get();
-        $this->assertCount(2, $regularNotes);
+        // Verify the important scope
+        $this->assertCount(3, Note::important()->get(), 'The important scope should return 3 notes');
     }
 
     /** @test */

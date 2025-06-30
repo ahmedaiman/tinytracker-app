@@ -85,23 +85,40 @@ class AppointmentFactory extends Factory
                 Appointment::RECURRENCE_YEARLY,
             ]),
             'recurrence_interval' => $this->faker->optional(0.3)->numberBetween(1, 4),
-            'recurrence_days' => $this->faker->optional(0.2)->randomElements(
-                [0, 1, 2, 3, 4, 5, 6],
-                $this->faker->numberBetween(1, 3)
-            ),
+            'recurrence_days' => function (array $attributes) {
+                if ($this->faker->optional(0.8)->boolean) {
+                    return null;
+                }
+                
+                $days = $this->faker->randomElements(
+                    [0, 1, 2, 3, 4, 5, 6],
+                    $this->faker->numberBetween(1, 3)
+                );
+                
+                // Ensure the days are sorted for consistency
+                sort($days);
+                
+                return $days;
+            },
             'recurrence_end_date' => $this->faker->optional(0.3)->dateTimeBetween('+1 month', '+1 year'),
             'reminder_sent' => $this->faker->boolean(30),
             'reminder_sent_at' => $this->faker->optional(0.3)->dateTimeBetween('-1 week', 'now'),
             'telegram_notification_sent' => $this->faker->boolean(20),
             'telegram_notification_sent_at' => $this->faker->optional(0.2)->dateTimeBetween('-1 week', 'now'),
-            'metadata' => $this->faker->optional(0.5)->randomElements([
-                'doctor_notes' => $this->faker->optional()->sentence,
-                'special_instructions' => $this->faker->optional()->sentence,
-                'insurance_provider' => $this->faker->optional(0.7)->company,
-                'insurance_policy' => $this->faker->optional(0.5)->bothify('POL-#######'),
-                'referral' => $this->faker->optional(0.3)->boolean,
-                'preparation_required' => $this->faker->optional(0.4)->sentence,
-            ]),
+            'metadata' => function () {
+                if (!$this->faker->boolean(50)) {
+                    return null;
+                }
+                
+                return [
+                    'doctor_notes' => $this->faker->optional(0.7)->sentence,
+                    'special_instructions' => $this->faker->optional(0.5)->sentence,
+                    'insurance_provider' => $this->faker->optional(0.7)->company,
+                    'insurance_policy' => $this->faker->optional(0.5)->bothify('POL-#######'),
+                    'referral' => $this->faker->optional(0.3)->boolean,
+                    'preparation_required' => $this->faker->optional(0.4)->sentence,
+                ];
+            },
         ];
     }
 

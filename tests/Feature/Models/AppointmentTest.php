@@ -41,6 +41,24 @@ class AppointmentTest extends TestCase
         $this->assertEquals('Regular Checkup', $appointment->title);
         $this->assertEquals(Appointment::TYPE_CHECKUP, $appointment->type);
         $this->assertEquals(Appointment::STATUS_SCHEDULED, $appointment->status);
+        
+        // Debug output
+        echo "\n\n--- DEBUG METADATA ---\n";
+        echo "Metadata type: " . gettype($appointment->metadata) . "\n";
+        echo "Metadata value: " . json_encode($appointment->metadata) . "\n";
+        echo "Metadata keys: " . (is_array($appointment->metadata) ? json_encode(array_keys($appointment->metadata)) : 'N/A') . "\n";
+        
+        // Check if metadata is accessible as an array
+        $metadata = $appointment->metadata;
+        if (is_array($metadata) || is_object($metadata)) {
+            $metadata = (array) $metadata;
+            echo "Doctor name in metadata: " . ($metadata['doctor_name'] ?? 'NOT FOUND') . "\n";
+        }
+        
+        echo "--- END DEBUG ---\n\n";
+        
+        // Assert the doctor_name exists in metadata
+        $this->assertArrayHasKey('doctor_name', (array)$appointment->metadata, 'doctor_name key not found in metadata');
         $this->assertEquals('Dr. Smith', $appointment->metadata['doctor_name']);
         $this->assertFalse($appointment->all_day);
     }
