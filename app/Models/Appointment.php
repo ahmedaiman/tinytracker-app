@@ -8,10 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Str;
+use RRule\RRule;
+use RRule\RRuleInterface;
+use App\Models\Model as BaseModel;
+use App\Models\Traits\HasRecurrence;
 
-class Appointment extends Model
+class Appointment extends BaseModel
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasRecurrence;
 
     // Appointment types
     public const TYPE_CHECKUP = 'checkup';
@@ -20,12 +26,26 @@ class Appointment extends Model
     public const TYPE_FOLLOW_UP = 'follow_up';
     public const TYPE_OTHER = 'other';
 
-    // Appointment statuses
+    // Appointment status constants
     public const STATUS_SCHEDULED = 'scheduled';
     public const STATUS_CONFIRMED = 'confirmed';
-    public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
-    public const STATUS_NO_SHOW = 'no_show';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_NOSHOW = 'no_show';
+
+    // Appointment type constants
+    public const TYPE_CHECKUP = 'checkup';
+    public const TYPE_EMERGENCY = 'emergency';
+    public const TYPE_FOLLOWUP = 'followup';
+    public const TYPE_ROUTINE = 'routine';
+    public const TYPE_VACCINATION = 'vaccination';
+    public const TYPE_OTHER = 'other';
+
+    // Notification preference constants
+    public const NOTIFICATION_EMAIL = 'email';
+    public const NOTIFICATION_SMS = 'sms';
+    public const NOTIFICATION_PUSH = 'push';
+    public const NOTIFICATION_NONE = 'none';
 
     // Recurrence patterns
     public const RECURRENCE_NONE = null;
@@ -41,106 +61,134 @@ class Appointment extends Model
      */
     protected $fillable = [
         'child_id',
-        'user_id',
-        'doctor_id',
         'title',
         'description',
+        'start_time',
+        'end_time',
         'location',
         'type',
         'status',
-        'start_time',
-        'end_time',
-        'all_day',
-        'recurrence_pattern',
-        'recurrence_interval',
-        'recurrence_days',
+        'recurrence_rule',
         'recurrence_end_date',
-        'metadata',
+        'recurrence_parent_id',
+        'recurrence_exdates',
+        'notification_preference',
+        'reminder_minutes_before',
+        'color',
+        'is_all_day',
+        'meeting_link',
+        'notes',
+        'created_by',
+        'updated_by',
     ];
 
     /**
      * The attributes that should be cast.
      *
-     * @var array<string, string>
+     * @return array<string, string>
      */
-    protected $casts = [
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
-        'all_day' => 'boolean',
-        'reminder_sent' => 'boolean',
-        'reminder_sent_at' => 'datetime',
-        'telegram_notification_sent' => 'boolean',
-        'telegram_notification_sent_at' => 'datetime',
-        'recurrence_days' => 'array',
-        'recurrence_end_date' => 'date',
-        'metadata' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return array_merge(parent::casts(), [
+            'start_time' => 'datetime',
+            'end_time' => 'datetime',
+            'recurrence_end_date' => 'date',
+            'recurrence_exdates' => 'array',
+            'is_all_day' => 'boolean',
+        ]);
+    }
 
     /**
-     * The model's default values for attributes.
+     * The accessors to append to the model's array form.
      *
-     * @var array
+     * @var array<int, string>
      */
-    protected $attributes = [
-        'type' => self::TYPE_CHECKUP,
-        'status' => self::STATUS_SCHEDULED,
-        'all_day' => false,
-        'reminder_sent' => false,
-        'telegram_notification_sent' => false,
+    protected $appends = [
+        'is_recurring',
+        'is_cancelled',
+        'is_completed',
+        'duration_minutes',
+        'is_upcoming',
     ];
 
     /**
-     * Get the child associated with the appointment.
+     * Get the child that owns the appointment.
      */
     public function child(): BelongsTo
     {
-        return $this->belongsTo(Child::class);
+        return $this->belongsTo(Child::class)->withDefault();
     }
 
     /**
      * Get the user who created the appointment.
      */
-    public function user(): BelongsTo
+    public function creator()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**
-     * Get the doctor associated with the appointment.
+     * Get the user who last updated the appointment.
      */
-    public function doctor(): BelongsTo
+    public function updater()
     {
-        return $this->belongsTo(User::class, 'doctor_id');
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     /**
-     * Get all of the appointment reminders.
+     * Get the reminders for the appointment.
      */
-    public function reminders(): HasMany
+    public function reminders()
     {
         return $this->hasMany(AppointmentReminder::class);
     }
 
     /**
+     * Get the parent appointment for recurring instances.
+     */
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'recurrence_parent_id');
+    }
+
+    /**
+     * Get the child appointments for recurring instances.
+     */
+    public function instances()
+    {
+        return $this->hasMany(self::class, 'recurrence_parent_id');
+    }
+
+    /**
      * Scope a query to only include upcoming appointments.
      */
-    public function scopeUpcoming($query)
+    public function scopeUpcoming($query, $days = 30)
     {
         return $query->where('start_time', '>=', now())
-                    ->where('status', '!=', self::STATUS_CANCELLED)
-                    ->where('status', '!=', self::STATUS_COMPLETED)
-                    ->orderBy('start_time', 'asc');
+                    ->where('start_time', '<=', now()->addDays($days))
+                    ->whereNotIn('status', [self::STATUS_CANCELLED, self::STATUS_COMPLETED])
+                    ->orderBy('start_time');
     }
 
     /**
      * Scope a query to only include past appointments.
      */
-    public function scopePast($query)
+    public function scopePast($query, $days = 30)
     {
-        return $query->where('end_time', '<', now())
-                    ->orWhere('status', self::STATUS_COMPLETED)
-                    ->orWhere('status', self::STATUS_CANCELLED)
+        return $query->where('start_time', '<', now())
+                    ->where('start_time', '>=', now()->subDays($days))
+                    ->whereNotIn('status', [self::STATUS_CANCELLED])
                     ->orderBy('start_time', 'desc');
+    }
+
+    /**
+     * Scope a query to only include appointments for today.
+     */
+    public function scopeToday($query)
+    {
+        return $query->whereDate('start_time', today())
+                    ->whereNotIn('status', [self::STATUS_CANCELLED])
+                    ->orderBy('start_time');
     }
 
     /**
@@ -152,11 +200,11 @@ class Appointment extends Model
     }
 
     /**
-     * Scope a query to only include appointments for a specific user.
+     * Scope a query to only include appointments of a specific type.
      */
-    public function scopeForUser($query, $userId)
+    public function scopeOfType($query, $type)
     {
-        return $query->where('user_id', $userId);
+        return $query->where('type', $type);
     }
 
     /**
@@ -164,55 +212,102 @@ class Appointment extends Model
      */
     public function scopeWithStatus($query, $status)
     {
+        if (is_array($status)) {
+            return $query->whereIn('status', $status);
+        }
+        
         return $query->where('status', $status);
     }
 
     /**
-     * Scope a query to only include appointments within a date range.
+     * Scope a query to only include recurring appointments.
      */
-    public function scopeBetweenDates($query, $startDate, $endDate = null)
+    public function scopeRecurring($query)
     {
-        $endDate = $endDate ?: $startDate;
-        
-        return $query->whereBetween('start_time', [
-            Carbon::parse($startDate)->startOfDay(),
-            Carbon::parse($endDate)->endOfDay()
-        ]);
+        return $query->whereNotNull('recurrence_rule');
     }
 
     /**
-     * Check if the appointment is upcoming.
+     * Scope a query to only include non-recurring appointments.
      */
-    public function isUpcoming(): bool
+    public function scopeNotRecurring($query)
+    {
+        return $query->whereNull('recurrence_rule');
+    }
+
+    /**
+     * Scope a query to only include appointments that need reminders.
+     */
+    public function scopeNeedsReminder($query)
+    {
+        return $query->where('notification_preference', '!=', self::NOTIFICATION_NONE)
+                    ->where('status', self::STATUS_SCHEDULED)
+                    ->where('start_time', '>', now())
+                    ->where(function($q) {
+                        $q->doesntHave('reminders')
+                          ->orWhereHas('reminders', function($q) {
+                              $q->where('status', AppointmentReminder::STATUS_FAILED);
+                          });
+                    });
+    }
+
+    /**
+     * Get the is_recurring attribute.
+     */
+    public function getIsRecurringAttribute(): bool
+    {
+        return !empty($this->recurrence_rule);
+    }
+
+    /**
+     * Get the is_cancelled attribute.
+     */
+    public function getIsCancelledAttribute(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
+
+    /**
+     * Get the is_completed attribute.
+     */
+    public function getIsCompletedAttribute(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    /**
+     * Get the duration_minutes attribute.
+     */
+    public function getDurationMinutesAttribute(): int
+    {
+        return $this->start_time->diffInMinutes($this->end_time);
+    }
+
+    /**
+     * Get the is_upcoming attribute.
+     */
+    public function getIsUpcomingAttribute(): bool
     {
         return $this->start_time->isFuture() && 
                !in_array($this->status, [self::STATUS_CANCELLED, self::STATUS_COMPLETED]);
     }
 
     /**
-     * Check if the appointment is recurring.
+     * Check if the appointment is happening now.
      */
-    public function isRecurring(): bool
+    public function isHappeningNow(): bool
     {
-        return !is_null($this->recurrence_pattern);
+        $now = now();
+        return $now->between($this->start_time, $this->end_time);
     }
 
     /**
-     * Mark the appointment as confirmed.
+     * Check if the appointment is overdue.
      */
-    public function confirm(): void
+    public function isOverdue(): bool
     {
-        $this->status = self::STATUS_CONFIRMED;
-        $this->save();
-    }
-
-    /**
-     * Mark the appointment as completed.
-     */
-    public function complete(): void
-    {
-        $this->status = self::STATUS_COMPLETED;
-        $this->save();
+        return $this->end_time->isPast() && 
+               !in_array($this->status, [self::STATUS_CANCELLED, self::STATUS_COMPLETED]);
     }
 
     /**
@@ -223,164 +318,152 @@ class Appointment extends Model
         $this->status = self::STATUS_CANCELLED;
         
         if ($reason) {
-            $metadata = $this->metadata ?? [];
-            $metadata['cancellation_reason'] = $reason;
-            $this->metadata = $metadata;
+            $this->notes = ($this->notes ? $this->notes . "\n\n" : '') . "Cancelled: " . $reason;
+        }
+        
+        $this->save();
+        
+        // Cancel any pending reminders
+        $this->reminders()
+             ->where('status', AppointmentReminder::STATUS_PENDING)
+             ->update(['status' => AppointmentReminder::STATUS_CANCELLED]);
+    }
+
+    /**
+     * Mark the appointment as completed.
+     */
+    public function markAsCompleted(string $notes = null): void
+    {
+        $this->status = self::STATUS_COMPLETED;
+        
+        if ($notes) {
+            $this->notes = ($this->notes ? $this->notes . "\n\n" : '') . $notes;
         }
         
         $this->save();
     }
 
     /**
-     * Mark the reminder as sent.
+     * Get all instances of a recurring appointment within a date range.
      */
-    public function markReminderAsSent(): void
+    public function getInstancesBetween(Carbon $start, Carbon $end): array
     {
-        $this->reminder_sent = true;
-        $this->reminder_sent_at = now();
-        $this->save();
+        if (!$this->is_recurring) {
+            return [$this];
+        }
+
+        $instances = [];
+        $current = $this;
+
+        while ($current && $current->start_time < $end) {
+            if ($current->start_time >= $start) {
+                $instances[] = $current;
+            }
+            $current = $current->getNextOccurrence();
+        }
+
+        return $instances;
     }
 
     /**
-     * Mark the Telegram notification as sent.
+     * Create reminders based on the appointment's notification preferences.
      */
-    public function markTelegramNotificationAsSent(): void
+    public function createReminders(): void
     {
-        $this->telegram_notification_sent = true;
-        $this->telegram_notification_sent_at = now();
-        $this->save();
+        if ($this->notification_preference === self::NOTIFICATION_NONE || 
+            $this->status === self::STATUS_CANCELLED ||
+            $this->start_time->isPast()) {
+            return;
+        }
+
+        $reminderTimes = $this->calculateReminderTimes();
+        
+        foreach ($reminderTimes as $minutesBefore => $reminderTime) {
+            $this->reminders()->create([
+                'reminder_time' => $reminderTime,
+                'minutes_before' => $minutesBefore,
+                'status' => AppointmentReminder::STATUS_PENDING,
+            ]);
+        }
     }
 
     /**
-     * Get the duration of the appointment in minutes.
+     * Calculate the reminder times based on the notification preference.
      */
-    public function getDurationInMinutes(): int
+    protected function calculateReminderTimes(): array
     {
-        return $this->start_time->diffInMinutes($this->end_time);
-    }
-
-    /**
-     * Get the appointment type options.
-     */
-    public static function getTypeOptions(): array
-    {
-        return [
-            self::TYPE_CHECKUP => 'Regular Checkup',
-            self::TYPE_CONSULTATION => 'Doctor Consultation',
-            self::TYPE_TEST => 'Medical Test',
-            self::TYPE_FOLLOW_UP => 'Follow-up Visit',
-            self::TYPE_OTHER => 'Other',
-        ];
-    }
-
-    /**
-     * Get the status options.
-     */
-    public static function getStatusOptions(): array
-    {
-        return [
-            self::STATUS_SCHEDULED => 'Scheduled',
-            self::STATUS_CONFIRMED => 'Confirmed',
-            self::STATUS_COMPLETED => 'Completed',
-            self::STATUS_CANCELLED => 'Cancelled',
-            self::STATUS_NO_SHOW => 'No Show',
-        ];
-    }
-
-    /**
-     * Get the recurrence pattern options.
-     */
-    public static function getRecurrenceOptions(): array
-    {
-        return [
-            self::RECURRENCE_NONE => 'Does not repeat',
-            self::RECURRENCE_DAILY => 'Daily',
-            self::RECURRENCE_WEEKLY => 'Weekly',
-            self::RECURRENCE_MONTHLY => 'Monthly',
-            self::RECURRENCE_YEARLY => 'Yearly',
-        ];
-    }
-
-    /**
-     * Get the days of the week options for weekly recurrence.
-     */
-    public static function getDaysOfWeekOptions(): array
-    {
-        return [
-            0 => 'Sunday',
-            1 => 'Monday',
-            2 => 'Tuesday',
-            3 => 'Wednesday',
-            4 => 'Thursday',
-            5 => 'Friday',
-            6 => 'Saturday',
-        ];
+        $reminderTimes = [];
+        
+        // Default reminder times in minutes before the appointment
+        $defaultReminders = [1440, 60, 15]; // 1 day, 1 hour, 15 minutes
+        
+        // If specific minutes_before is set, use that
+        if ($this->reminder_minutes_before) {
+            $defaultReminders = [$this->reminder_minutes_before];
+        }
+        
+        foreach ($defaultReminders as $minutes) {
+            $reminderTime = $this->start_time->copy()->subMinutes($minutes);
+            
+            // Only add future reminders
+            if ($reminderTime->isFuture()) {
+                $reminderTimes[$minutes] = $reminderTime;
+            }
+        }
+        
+        return $reminderTimes;
     }
 
     /**
      * Get the next occurrence of a recurring appointment.
+     * Returns null if there are no more occurrences.
      */
-    public function getNextOccurrence()
+    public function getNextOccurrence(): ?self
     {
-        if (!$this->isRecurring()) {
+        if (!$this->recurrence_rule) {
             return null;
         }
-        
-        $now = now();
-        $nextDate = Carbon::parse($this->start_time);
-        
-        // If the next occurrence is in the past, calculate the next one
-        while ($nextDate->lt($now) || $nextDate->eq($this->start_time)) {
-            $nextDate = $this->calculateNextOccurrenceDate($nextDate);
+
+        try {
+            // Parse the RRULE
+            $rrule = new RRule($this->recurrence_rule);
             
-            // Safety check to prevent infinite loops
-            if ($nextDate === null || $nextDate->gt(now()->addYears(2))) {
+            // Get the next occurrence after now
+            $nextDate = $rrule->getOccurrencesAfter(now(), true, 1);
+            
+            if (empty($nextDate)) {
                 return null;
             }
-        }
-        
-        // Create a new appointment instance for the next occurrence
-        $nextAppointment = $this->replicate();
-        $nextAppointment->start_time = $nextDate;
-        
-        // Calculate the duration of the original appointment
-        $durationInMinutes = $this->start_time->diffInMinutes($this->end_time);
-        
-        // Set the end time by adding the duration to the new start time
-        $nextAppointment->end_time = (clone $nextDate)->addMinutes($durationInMinutes);
-        
-        return $nextAppointment;
-    }
-    
-    /**
-     * Calculate the next occurrence date based on the recurrence pattern.
-     */
-    protected function calculateNextOccurrenceDate(Carbon $date)
-    {
-        $nextDate = clone $date;
-        
-        switch ($this->recurrence_pattern) {
-            case self::RECURRENCE_DAILY:
-                $nextDate->addDays($this->recurrence_interval ?? 1);
-                break;
-                
-            case self::RECURRENCE_WEEKLY:
-                // Get recurrence days as an array (it might be JSON encoded)
-                $recurrenceDays = is_string($this->recurrence_days) 
-                    ? json_decode($this->recurrence_days, true) 
-                    : (is_array($this->recurrence_days) ? $this->recurrence_days : []);
-                
-                if (!empty($recurrenceDays)) {
-                    $currentDay = $nextDate->dayOfWeek;
-                    $nextDay = null;
-                    
-                    // Sort the days to ensure proper order
-                    sort($recurrenceDays);
-                    
-                    // Find the next day in the same week
-                    foreach ($recurrenceDays as $day) {
-                        if ($day > $currentDay) {
-                            $nextDay = $day;
+            
+            $nextDate = $nextDate[0];
+            
+            // If there's a recurrence end date and the next occurrence is after it, return null
+            if ($this->recurrence_end_date && $nextDate > $this->recurrence_end_date) {
+                return null;
+            }
+            
+            // Check if this date is in the exdates
+            if (in_array($nextDate->format('Y-m-d'), $this->recurrence_exdates ?? [])) {
+                return $this->getNextOccurrenceAfter($nextDate);
+            }
+            
+            // Create a new appointment instance for the next occurrence
+            $nextAppointment = $this->replicate();
+            $nextAppointment->recurrence_parent_id = $this->id;
+            
+            // Calculate the duration of the original appointment
+            $durationInMinutes = $this->start_time->diffInMinutes($this->end_time);
+            
+            // Set the start time to the next occurrence
+            $nextAppointment->start_time = $nextDate;
+            
+            // Set the end time by adding the duration to the new start time
+            $nextAppointment->end_time = (clone $nextDate)->addMinutes($durationInMinutes);
+            
+            return $nextAppointment;
+            
+        } catch (\Exception $e) {
+            \Log::error('Error calculating next occurrence: ' . $e->getMessage());
                             break;
                         }
                     }

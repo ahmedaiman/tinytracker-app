@@ -4,16 +4,16 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Model as BaseModel;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Collection;
 
-class User extends Authenticatable
+class User extends BaseModel
 {
-    use HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     // Role constants
     public const ROLE_GUARDIAN = 'guardian';
@@ -28,10 +28,7 @@ class User extends Authenticatable
     ];
 
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory;
     use HasProfilePhoto;
-    use Notifiable;
-    use TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -76,6 +73,7 @@ class User extends Authenticatable
         'is_admin',
         'is_doctor',
         'is_guardian',
+        'role_name',
     ];
 
     /**
@@ -125,9 +123,53 @@ class User extends Authenticatable
      */
     protected function casts(): array
     {
-        return [
+        return array_merge(parent::casts(), [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-        ];
+        ]);
+    }
+
+    /**
+     * Scope a query to only include users with a specific role.
+     */
+    public function scopeWithRole($query, $role)
+    {
+        return $query->where('role', $role);
+    }
+
+    /**
+     * Scope a query to only include active users.
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereNull('deleted_at');
+    }
+
+    /**
+     * Scope a query to only include users with unread notifications.
+     */
+    public function scopeWithUnreadNotifications($query, int $limit = 5)
+    {
+        return $query->with(['unreadNotifications' => function ($q) use ($limit) {
+            $q->latest()->limit($limit);
+        }]);
+    }
+
+    /**
+     * Scope a query to only include users with upcoming appointments.
+     */
+    public function scopeWithUpcomingAppointments($query, int $days = 7)
+    {
+        return $query->whereHas('appointments', function ($q) use ($days) {
+            $q->whereBetween('start_time', [now(), now()->addDays($days)]);
+        });
+    }
+
+    /**
+     * Get the user's full name.
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
     }
 }
