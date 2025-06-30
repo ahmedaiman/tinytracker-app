@@ -83,6 +83,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(Child::class);
     }
+    
+    /**
+     * Get the random checks performed by the user.
+     */
+    public function randomChecks()
+    {
+        return $this->hasMany(RandomCheck::class);
+    }
 
     /**
      * Check if the user has the admin role.

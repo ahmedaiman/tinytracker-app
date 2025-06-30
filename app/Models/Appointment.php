@@ -53,6 +53,42 @@ class Appointment extends BaseModel
     public const RECURRENCE_YEARLY = 'yearly';
 
     /**
+     * Get all available appointment types with their display names.
+     *
+     * @return array
+     */
+    public static function getTypeOptions(): array
+    {
+        return [
+            self::TYPE_CHECKUP => 'Checkup',
+            self::TYPE_CONSULTATION => 'Consultation',
+            self::TYPE_TEST => 'Test',
+            self::TYPE_FOLLOW_UP => 'Follow Up',
+            self::TYPE_OTHER => 'Other',
+            self::TYPE_EMERGENCY => 'Emergency',
+            self::TYPE_FOLLOWUP => 'Follow-up',
+            self::TYPE_ROUTINE => 'Routine',
+            self::TYPE_VACCINATION => 'Vaccination',
+        ];
+    }
+
+    /**
+     * Get all available appointment statuses with their display names.
+     *
+     * @return array
+     */
+    public static function getStatusOptions(): array
+    {
+        return [
+            self::STATUS_SCHEDULED => 'Scheduled',
+            self::STATUS_CONFIRMED => 'Confirmed',
+            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_CANCELLED => 'Cancelled',
+            self::STATUS_NOSHOW => 'No Show',
+        ];
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>

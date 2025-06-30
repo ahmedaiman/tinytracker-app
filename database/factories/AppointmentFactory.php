@@ -73,7 +73,7 @@ class AppointmentFactory extends Factory
                 Appointment::STATUS_CONFIRMED,
                 Appointment::STATUS_COMPLETED,
                 Appointment::STATUS_CANCELLED,
-                Appointment::STATUS_NO_SHOW,
+                Appointment::STATUS_NOSHOW,
             ]),
             'start_time' => $startTime,
             'end_time' => $endTime,

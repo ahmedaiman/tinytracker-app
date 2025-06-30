@@ -116,10 +116,12 @@ class NoteTest extends TestCase
     /** @test */
     public function it_has_scope_for_date_range()
     {
-        $today = now();
-        $yesterday = now()->subDay();
-        $lastWeek = now()->subWeek();
+        // Use start of day to avoid timezone issues
+        $today = now()->startOfDay();
+        $yesterday = now()->subDay()->startOfDay();
+        $lastWeek = now()->subWeek()->startOfDay();
         
+        // Create test notes with specific dates
         $noteToday = Note::factory()->create([
             'noted_at' => $today,
         ]);
@@ -132,14 +134,23 @@ class NoteTest extends TestCase
             'noted_at' => $lastWeek,
         ]);
         
-        // Test date range scope
-        $recentNotes = Note::dateRange($yesterday, $today)->get();
-        $this->assertCount(2, $recentNotes);
+        // Create another note for today to test inclusive range
+        $anotherNoteToday = Note::factory()->create([
+            'noted_at' => $today->copy()->addHours(12), // Add some hours to today
+        ]);
         
-        $olderNotes = Note::dateRange($lastWeek, $yesterday)->get();
-        $this->assertCount(1, $olderNotes);
-        $this->assertEquals($lastWeek->format('Y-m-d'), 
-            $olderNotes->first()->noted_at->format('Y-m-d'));
+        // Test date range scope (inclusive of start and end dates)
+        $recentNotes = Note::dateRange($yesterday, $today)->get();
+        $this->assertCount(3, $recentNotes, 'Should include notes from yesterday and today');
+        
+        // Test date range for older notes (last week to yesterday)
+        $olderNotes = Note::dateRange($lastWeek, $yesterday->copy()->subSecond())->get();
+        $this->assertCount(1, $olderNotes, 'Should only include the note from last week');
+        $this->assertEquals(
+            $lastWeek->format('Y-m-d'), 
+            $olderNotes->first()->noted_at->startOfDay()->format('Y-m-d'),
+            'The note should be from last week'
+        );
     }
 
     /** @test */

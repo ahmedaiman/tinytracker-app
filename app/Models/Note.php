@@ -162,10 +162,14 @@ class Note extends Model
 
     /**
      * Get a short excerpt of the note content.
+     * 
+     * @param int|null $length The maximum length of the excerpt. Defaults to 100 if not specified.
+     * @return string
      */
-    public function getExcerptAttribute(int $length = 100): string
+    public function getExcerptAttribute(?int $length = null): string
     {
-        $content = strip_tags($this->content);
+        $length = $length ?? 100; // Default to 100 if null is passed
+        $content = strip_tags($this->content ?? '');
         
         if (mb_strlen($content) <= $length) {
             return $content;

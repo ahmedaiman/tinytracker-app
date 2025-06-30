@@ -62,19 +62,31 @@ class Child extends BaseModel
         $birthday = Carbon::parse($this->date_of_birth);
         $now = Carbon::now();
         
-        $years = $now->diffInYears($birthday);
-        $birthday = $birthday->addYears($years);
+        // Calculate years difference
+        $years = $now->diffInYears($birthday, false) * -1; // Make it positive
         
-        $months = $now->diffInMonths($birthday);
-        $birthday = $birthday->addMonths($months);
+        // Create a copy of the birthday and add the years
+        $birthdayAtAge = $birthday->copy()->addYears($years);
         
-        $days = $now->diffInDays($birthday);
+        // Calculate months difference after accounting for years
+        $months = $now->diffInMonths($birthdayAtAge, false) * -1;
+        
+        // Add the months to get the exact date after accounting for months
+        $birthdayAtAge->addMonths($months);
+        
+        // Calculate days difference after accounting for years and months
+        $days = $now->diffInDays($birthdayAtAge, false) * -1;
+        
+        // Convert values to integers for display
+        $displayYears = (int) $years;
+        $displayMonths = (int) $months;
+        $displayDays = (int) $days;
         
         return [
             'years' => $years,
-            'months' => $months % 12,
+            'months' => $months,
             'days' => $days,
-            'display' => "{$years}y {$months}m {$days}d",
+            'display' => "{$displayYears} years, {$displayMonths} months, {$displayDays} days",
         ];
     }
 

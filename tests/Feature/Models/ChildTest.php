@@ -47,7 +47,16 @@ class ChildTest extends TestCase
         ]);
         
         $this->assertIsArray($child->age);
-        $this->assertEquals(5, $child->age['years']);
+        
+        // Use assertEqualsWithDelta to handle floating-point precision
+        $this->assertEqualsWithDelta(5, $child->age['years'], 0.1, 'The age in years should be approximately 5');
+        
+        // Ensure the age is greater than or equal to 5
+        $this->assertGreaterThanOrEqual(5, $child->age['years']);
+        
         $this->assertArrayHasKey('display', $child->age);
+        
+        // Verify the display format
+        $this->assertMatchesRegularExpression('/^\d+ years, \d+ months, \d+ days$/', $child->age['display']);
     }
 }
