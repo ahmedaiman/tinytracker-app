@@ -28,14 +28,12 @@ class RandomCheck extends Model
         'child_id',
         'user_id',
         'check_time',
-        'blood_glucose',
+        'bg_value',
         'insulin_type_id',
         'insulin_units',
         'insulin_injected_at',
         'context',
         'notes',
-        'is_high_alert',
-        'is_low_alert',
         'is_manual_entry',
     ];
 
@@ -47,7 +45,7 @@ class RandomCheck extends Model
     protected $casts = [
         'check_time' => 'datetime',
         'insulin_injected_at' => 'datetime',
-        'blood_glucose' => 'integer',
+        'bg_value' => 'integer',
         'insulin_units' => 'decimal:2',
         'is_high_alert' => 'boolean',
         'is_low_alert' => 'boolean',

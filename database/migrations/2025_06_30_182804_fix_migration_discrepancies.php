@@ -12,9 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Remove duplicate children table if it exists
+        // First, disable foreign key checks
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        
+        // 2. Drop the children table if it exists
         if (Schema::hasTable('children')) {
             Schema::dropIfExists('children');
         }
+        
+        // Re-enable foreign key checks after dropping
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Recreate children table with correct structure
         Schema::create('children', function (Blueprint $table) {
@@ -39,79 +46,128 @@ return new class extends Migration
             $table->enum('role', ['guardian', 'doctor', 'admin'])->default('guardian')->change();
         });
 
-        // 3. Update insulin_types table
-        Schema::table('insulin_types', function (Blueprint $table) {
-            $table->boolean('rapid_flag')->after('name');
-            
-            // Migrate data from is_rapid to rapid_flag
-            if (Schema::hasColumn('insulin_types', 'is_rapid')) {
-                DB::statement('UPDATE insulin_types SET rapid_flag = is_rapid');
-                $table->dropColumn('is_rapid');
+        // 3. Ensure insulin_types table has is_rapid column
+        if (Schema::hasTable('insulin_types')) {
+            // Add is_rapid column if it doesn't exist
+            if (!Schema::hasColumn('insulin_types', 'is_rapid')) {
+                Schema::table('insulin_types', function (Blueprint $table) {
+                    $table->boolean('is_rapid')->default(false)->after('description');
+                });
             }
-            
-            // Remove unnecessary columns
-            $columnsToDrop = ['description', 'sort_order', 'is_active'];
-            foreach ($columnsToDrop as $column) {
-                if (Schema::hasColumn('insulin_types', $column)) {
-                    $table->dropColumn($column);
-                }
-            }
-        });
+        }
 
         // 4. Update meals table
-        Schema::table('meals', function (Blueprint $table) {
-            // Add unique constraint
-            $table->unique(['child_id', DB::raw('DATE(meal_time)'), 'meal_type'], 'unique_meal_per_type_per_day');
+        if (Schema::hasTable('meals')) {
+            // First rename columns if they exist
+            if (Schema::hasColumn('meals', 'pre_meal_bg')) {
+                Schema::table('meals', function (Blueprint $table) {
+                    $table->renameColumn('pre_meal_bg', 'pre_bg');
+                });
+            }
             
-            // Rename columns to match requirements
-            $table->renameColumn('pre_meal_bg', 'pre_bg');
-            $table->renameColumn('post_meal_bg', 'post_bg');
-            $table->renameColumn('food_description', 'food_desc');
+            if (Schema::hasColumn('meals', 'post_meal_bg')) {
+                Schema::table('meals', function (Blueprint $table) {
+                    $table->renameColumn('post_meal_bg', 'post_bg');
+                });
+            }
+            
+            if (Schema::hasColumn('meals', 'food_description')) {
+                Schema::table('meals', function (Blueprint $table) {
+                    $table->renameColumn('food_description', 'food_desc');
+                });
+            }
             
             // Add missing columns
-            if (!Schema::hasColumn('meals', 'status')) {
-                $table->enum('status', ['open', 'closed'])->default('open')->after('sugars_grams');
-            }
+            Schema::table('meals', function (Blueprint $table) {
+                if (!Schema::hasColumn('meals', 'status')) {
+                    $table->enum('status', ['open', 'closed'])->default('open')->after('sugars_grams');
+                }
+                
+                if (!Schema::hasColumn('meals', 'override_flag')) {
+                    $table->boolean('override_flag')->default(false)->after('status');
+                }
+            });
             
-            if (!Schema::hasColumn('meals', 'override_flag')) {
-                $table->boolean('override_flag')->default(false)->after('status');
+            // Add a generated column for the date part of meal_time
+            if (!Schema::hasColumn('meals', 'meal_date')) {
+                DB::statement('ALTER TABLE meals ADD COLUMN meal_date DATE GENERATED ALWAYS AS (DATE(meal_time)) STORED');
+                
+                // Add unique constraint on the generated column
+                Schema::table('meals', function (Blueprint $table) {
+                    $table->unique(['child_id', 'meal_date', 'meal_type'], 'unique_meal_per_type_per_day');
+                });
             }
-        });
+        }
 
         // 5. Update random_checks table
-        Schema::table('random_checks', function (Blueprint $table) {
-            $table->renameColumn('blood_glucose', 'bg_value');
+        if (Schema::hasTable('random_checks')) {
+            // Rename blood_glucose to bg_value if it exists
+            if (Schema::hasColumn('random_checks', 'blood_glucose')) {
+                Schema::table('random_checks', function (Blueprint $table) {
+                    $table->renameColumn('blood_glucose', 'bg_value');
+                });
+            }
             
-            // Remove unnecessary columns
-            $columnsToDrop = ['insulin_type_id', 'insulin_units', 'insulin_injected_at', 'is_high_alert', 'is_low_alert'];
+            // Drop foreign key constraint for insulin_type_id if it exists
+            if (Schema::hasColumn('random_checks', 'insulin_type_id')) {
+                Schema::table('random_checks', function (Blueprint $table) {
+                    $sql = "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE " .
+                           "WHERE TABLE_NAME = 'random_checks' AND COLUMN_NAME = 'insulin_type_id' " .
+                           "AND REFERENCED_TABLE_NAME IS NOT NULL";
+                    
+                    $foreignKeys = DB::select($sql);
+                    
+                    foreach ($foreignKeys as $foreignKey) {
+                        $constraintName = $foreignKey->CONSTRAINT_NAME;
+                        $table->dropForeign($constraintName);
+                    }
+                    
+                    $table->dropColumn('insulin_type_id');
+                });
+            }
+            
+            // Drop other unnecessary columns
+            $columnsToDrop = ['insulin_units', 'insulin_injected_at', 'is_high_alert', 'is_low_alert'];
             foreach ($columnsToDrop as $column) {
                 if (Schema::hasColumn('random_checks', $column)) {
-                    $table->dropColumn($column);
+                    Schema::table('random_checks', function (Blueprint $table) use ($column) {
+                        $table->dropColumn($column);
+                    });
                 }
             }
-        });
+        }
 
         // 6. Update basal_doses table
-        Schema::table('basal_doses', function (Blueprint $table) {
-            // Add unique constraint
-            $table->unique(['child_id', DB::raw('DATE(injected_at)')], 'one_basal_dose_per_day');
-            
-            // Rename injected_at to dose_date and change type to date
-            if (Schema::hasColumn('basal_doses', 'injected_at')) {
-                $table->date('dose_date')->nullable()->after('injected_at');
-                DB::statement('UPDATE basal_doses SET dose_date = DATE(injected_at)');
-                $table->dropColumn('injected_at');
-                $table->renameColumn('dose_date', 'injected_at');
+        if (Schema::hasTable('basal_doses')) {
+            // First, add a new date column if it doesn't exist
+            if (!Schema::hasColumn('basal_doses', 'injection_date')) {
+                Schema::table('basal_doses', function (Blueprint $table) {
+                    $table->date('injection_date')->nullable()->after('injected_at');
+                });
+                
+                // Copy the date part from injected_at to injection_date
+                DB::statement('UPDATE basal_doses SET injection_date = DATE(injected_at)');
             }
             
-            // Remove unnecessary columns
-            $columnsToDrop = ['is_manual_entry', 'is_correction_dose', 'injection_site'];
-            foreach ($columnsToDrop as $column) {
-                if (Schema::hasColumn('basal_doses', $column)) {
-                    $table->dropColumn($column);
+            // Now modify the table to handle the date column
+            Schema::table('basal_doses', function (Blueprint $table) {
+                // Add unique constraint on the new date column
+                $table->unique(['child_id', 'injection_date'], 'one_basal_dose_per_day');
+                
+                // Remove the old timestamp column if it exists
+                if (Schema::hasColumn('basal_doses', 'injected_at')) {
+                    $table->dropColumn('injected_at');
                 }
-            }
-        });
+                
+                // Remove unnecessary columns
+                $columnsToDrop = ['is_manual_entry', 'is_correction_dose', 'injection_site'];
+                foreach ($columnsToDrop as $column) {
+                    if (Schema::hasColumn('basal_doses', $column)) {
+                        $table->dropColumn($column);
+                    }
+                }
+            });
+        }
 
         // 7. Update notes table
         Schema::table('notes', function (Blueprint $table) {

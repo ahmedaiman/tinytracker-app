@@ -48,8 +48,9 @@ class Meal extends Model
         'post_meal_bg' => 'integer',
         'carbs_grams' => 'integer',
         'sugars_grams' => 'integer',
-        'insulin_units' => 'decimal:2',
+        'status' => 'string',
         'is_override' => 'boolean',
+        'insulin_units' => 'decimal:2',
     ];
 
     /**

@@ -26,6 +26,49 @@ class Child extends Model
         'current_profile_photo_path',
     ];
 
+    protected $appends = ['age', 'age_in_months'];
+
+    /**
+     * Calculate the child's current age.
+     */
+    public function getAgeAttribute(): array
+    {
+        if (!$this->date_of_birth) {
+            return [
+                'years' => null,
+                'months' => null,
+                'days' => null,
+                'display' => 'N/A',
+            ];
+        }
+        
+        $birthday = Carbon::parse($this->date_of_birth);
+        $now = Carbon::now();
+        
+        $years = $now->diffInYears($birthday);
+        $birthday = $birthday->addYears($years);
+        
+        $months = $now->diffInMonths($birthday);
+        $birthday = $birthday->addMonths($months);
+        
+        $days = $now->diffInDays($birthday);
+        
+        return [
+            'years' => $years,
+            'months' => $months % 12,
+            'days' => $days,
+            'display' => "{$years}y {$months}m {$days}d",
+        ];
+    }
+
+    /**
+     * Get the child's age in months.
+     */
+    public function getAgeInMonthsAttribute(): ?int
+    {
+        return $this->date_of_birth ? Carbon::parse($this->date_of_birth)->diffInMonths(now()) : null;
+    }
+
     /**
      * The attributes that should be cast.
      *
@@ -73,37 +116,7 @@ class Child extends Model
         return 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
     }
 
-    /**
-     * Calculate the child's current age.
-     */
-    public function getAgeAttribute(): array
-    {
-        $birthday = Carbon::parse($this->date_of_birth);
-        $now = Carbon::now();
-        
-        $years = $now->diffInYears($birthday);
-        $birthday = $birthday->addYears($years);
-        
-        $months = $now->diffInMonths($birthday);
-        $birthday = $birthday->addMonths($months);
-        
-        $days = $now->diffInDays($birthday);
-        
-        return [
-            'years' => $years,
-            'months' => $months % 12,
-            'days' => $days,
-            'display' => "{$years}y {$months}m {$days}d",
-        ];
-    }
 
-    /**
-     * Get the child's age in months.
-     */
-    public function getAgeInMonthsAttribute(): int
-    {
-        return Carbon::parse($this->date_of_birth)->diffInMonths(now());
-    }
 
     /**
      * Scope a query to only include children for a specific user.
