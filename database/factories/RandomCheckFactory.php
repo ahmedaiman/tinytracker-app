@@ -27,6 +27,8 @@ class RandomCheckFactory extends Factory
             'context' => $context,
             'notes' => $this->faker->optional()->sentence,
             'is_manual_entry' => $this->faker->boolean,
+            'is_high_alert' => $bgValue > 200 ? $this->faker->boolean(80) : $this->faker->boolean(5),
+            'is_low_alert' => $bgValue < 70 ? $this->faker->boolean(80) : $this->faker->boolean(5),
         ];
     }
 }

@@ -57,13 +57,14 @@ class AppointmentReminderTest extends TestCase
         $reminder = AppointmentReminder::factory()->create([
             'status' => AppointmentReminder::STATUS_PENDING,
             'sent_at' => null,
+            'attempts' => 0,
         ]);
         
         $reminder->markAsSent('Successfully sent');
         
         $this->assertEquals(AppointmentReminder::STATUS_SENT, $reminder->status);
         $this->assertNotNull($reminder->sent_at);
-        $this->assertGreaterThan(0, $reminder->attempts);
+        $this->assertEquals(1, $reminder->attempts);
         $this->assertNotNull($reminder->last_attempt_at);
         $this->assertEquals('Successfully sent', $reminder->status_message);
     }

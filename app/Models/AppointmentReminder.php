@@ -128,7 +128,7 @@ class AppointmentReminder extends Model
     {
         $this->status = self::STATUS_SENT;
         $this->sent_at = now();
-        $this->attempts++;
+        $this->attempts = $this->attempts + 1; // Explicitly set to current + 1
         $this->last_attempt_at = now();
         
         if ($message) {

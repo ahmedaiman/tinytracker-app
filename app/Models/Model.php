@@ -37,7 +37,9 @@ class Model extends BaseModel
      */
     public function getTable()
     {
-        return $this->table ?? str_plural(snake_case(class_basename($this)));
+        return $this->table ?? \Illuminate\Support\Str::plural(
+            \Illuminate\Support\Str::snake(class_basename($this))
+        );
     }
 
     /**
@@ -47,7 +49,7 @@ class Model extends BaseModel
      */
     public function getForeignKey()
     {
-        return snake_case(class_basename($this)) . '_id';
+        return \Illuminate\Support\Str::snake(class_basename($this)) . '_id';
     }
 
     /**

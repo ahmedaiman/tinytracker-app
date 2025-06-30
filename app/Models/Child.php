@@ -213,7 +213,7 @@ class Child extends BaseModel
      */
     public function randomChecks()
     {
-        return $this->hasMany(RandomCheck::class)->orderBy('checked_at', 'desc');
+        return $this->hasMany(RandomCheck::class)->orderBy('check_time', 'desc');
     }
 
     /**

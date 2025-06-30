@@ -5,6 +5,7 @@ namespace Tests\Feature\Models;
 use App\Models\Child;
 use App\Models\RandomCheck;
 use App\Models\User;
+use App\Models\InsulinType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

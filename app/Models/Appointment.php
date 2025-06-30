@@ -34,12 +34,10 @@ class Appointment extends BaseModel
     public const STATUS_NOSHOW = 'no_show';
 
     // Appointment type constants
-    public const TYPE_CHECKUP = 'checkup';
     public const TYPE_EMERGENCY = 'emergency';
     public const TYPE_FOLLOWUP = 'followup';
     public const TYPE_ROUTINE = 'routine';
     public const TYPE_VACCINATION = 'vaccination';
-    public const TYPE_OTHER = 'other';
 
     // Notification preference constants
     public const NOTIFICATION_EMAIL = 'email';
@@ -183,8 +181,11 @@ class Appointment extends BaseModel
 
     /**
      * Scope a query to only include appointments for today.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeToday($query)
+    public function scopeToday(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->whereDate('start_time', today())
                     ->whereNotIn('status', [self::STATUS_CANCELLED])
@@ -210,7 +211,14 @@ class Appointment extends BaseModel
     /**
      * Scope a query to only include appointments with a specific status.
      */
-    public function scopeWithStatus($query, $status)
+    /**
+     * Scope a query to only include appointments with a specific status.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  string|array  $status
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithStatus(\Illuminate\Database\Eloquent\Builder $query, $status): \Illuminate\Database\Eloquent\Builder
     {
         if (is_array($status)) {
             return $query->whereIn('status', $status);
@@ -437,21 +445,11 @@ class Appointment extends BaseModel
             
             $nextDate = $nextDate[0];
             
-            // If there's a recurrence end date and the next occurrence is after it, return null
-            if ($this->recurrence_end_date && $nextDate > $this->recurrence_end_date) {
-                return null;
-            }
-            
-            // Check if this date is in the exdates
-            if (in_array($nextDate->format('Y-m-d'), $this->recurrence_exdates ?? [])) {
-                return $this->getNextOccurrenceAfter($nextDate);
-            }
-            
             // Create a new appointment instance for the next occurrence
             $nextAppointment = $this->replicate();
             $nextAppointment->recurrence_parent_id = $this->id;
             
-            // Calculate the duration of the original appointment
+            // Calculate the duration in minutes between start and end times
             $durationInMinutes = $this->start_time->diffInMinutes($this->end_time);
             
             // Set the start time to the next occurrence
@@ -464,39 +462,9 @@ class Appointment extends BaseModel
             
         } catch (\Exception $e) {
             \Log::error('Error calculating next occurrence: ' . $e->getMessage());
-                            break;
-                        }
-                    }
-                    
-                    if ($nextDay !== null) {
-                        // Next occurrence is in the same week
-                        $nextDate->addDays($nextDay - $currentDay);
-                    } else {
-                        // Move to the first day of the next week
-                        $weeksToAdd = ($this->recurrence_interval ?? 1) - 1;
-                        $daysToAdd = (7 - $currentDay) + ($recurrenceDays[0] ?? 0) + ($weeksToAdd * 7);
-                        $nextDate->addDays($daysToAdd);
-                    }
-                } else {
-                    // If no specific days are set, just add the interval in weeks
-                    $nextDate->addWeeks($this->recurrence_interval ?? 1);
-                }
-                break;
-                
-            case self::RECURRENCE_MONTHLY:
-                $nextDate->addMonthsNoOverflow($this->recurrence_interval ?? 1);
-                break;
-                
-            case self::RECURRENCE_YEARLY:
-                $nextDate->addYears($this->recurrence_interval ?? 1);
-                break;
-        }
-        
-        // If we've passed the end date, return null
-        if ($this->recurrence_end_date && $nextDate->gt($this->recurrence_end_date)) {
             return null;
         }
-        
-        return $nextDate;
     }
 }
+
+

@@ -35,6 +35,8 @@ class RandomCheck extends Model
         'context',
         'notes',
         'is_manual_entry',
+        'is_high_alert',
+        'is_low_alert',
     ];
 
     /**

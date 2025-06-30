@@ -27,7 +27,7 @@ return new class extends Migration
         Schema::table('basal_doses', function (Blueprint $table) {
             // Add back the injection_site column if rolling back
             if (!Schema::hasColumn('basal_doses', 'injection_site')) {
-                $table->string('injection_site', 50)->nullable()->after('injected_at');
+                $table->string('injection_site', 50)->nullable();
             }
         });
     }
