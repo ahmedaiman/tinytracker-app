@@ -203,14 +203,13 @@ class AppointmentTest extends TestCase
     public function it_can_check_if_appointment_is_recurring()
     {
         $recurring = Appointment::factory()->create([
-            'recurrence_pattern' => 'weekly',
-            'recurrence_interval' => 1,
+            'recurrence_rule' => 'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE,FR',
             'recurrence_days' => [1, 3, 5], // Mon, Wed, Fri
             'recurrence_end_date' => now()->addMonth(),
         ]);
         
         $oneTime = Appointment::factory()->create([
-            'recurrence_pattern' => null,
+            'recurrence_rule' => null,
         ]);
         
         $this->assertTrue($recurring->isRecurring());
