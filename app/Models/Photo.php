@@ -18,6 +18,7 @@ class Photo extends Model
      */
     protected $fillable = [
         'child_id',
+        'user_id',
         'file_path',
         'thumbnail_path',
         'taken_at',
@@ -42,6 +43,14 @@ class Photo extends Model
     public function child()
     {
         return $this->belongsTo(Child::class);
+    }
+
+    /**
+     * Get the user that uploaded the photo.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

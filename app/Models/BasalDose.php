@@ -11,12 +11,7 @@ class BasalDose extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // Common injection sites
-    public const SITE_ABDOMEN = 'abdomen';
-    public const SITE_THIGH = 'thigh';
-    public const SITE_ARM = 'arm';
-    public const SITE_BUTTOCK = 'buttock';
-    public const SITE_OTHER = 'other';
+    // Injection site constants have been removed as the column was dropped
 
     /**
      * The attributes that are mass assignable.
@@ -28,8 +23,7 @@ class BasalDose extends Model
         'user_id',
         'insulin_type_id',
         'units',
-        'injected_at',
-        'injection_site',
+        'injection_date',
         'notes',
         'is_manual_entry',
         'is_correction_dose',
@@ -41,7 +35,7 @@ class BasalDose extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'injected_at' => 'datetime',
+        'injection_date' => 'date',
         'units' => 'decimal:2',
         'is_manual_entry' => 'boolean',
         'is_correction_dose' => 'boolean',
@@ -56,22 +50,6 @@ class BasalDose extends Model
         'is_manual_entry' => true,
         'is_correction_dose' => false,
     ];
-
-    /**
-     * Get all available injection site options.
-     *
-     * @return array
-     */
-    public static function getInjectionSiteOptions(): array
-    {
-        return [
-            self::SITE_ABDOMEN => 'Abdomen',
-            self::SITE_THIGH => 'Thigh',
-            self::SITE_ARM => 'Arm',
-            self::SITE_BUTTOCK => 'Buttock',
-            self::SITE_OTHER => 'Other',
-        ];
-    }
 
     /**
      * Get the child that received the basal dose.
@@ -99,6 +77,10 @@ class BasalDose extends Model
 
     /**
      * Scope a query to only include doses for a specific child.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  int  $childId
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeForChild($query, $childId)
     {
@@ -107,16 +89,25 @@ class BasalDose extends Model
 
     /**
      * Scope a query to only include doses for a specific date.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  string|\Carbon\Carbon  $date
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeForDate($query, $date)
     {
-        $date = $date instanceof Carbon ? $date : Carbon::parse($date);
+        if (! $date instanceof Carbon) {
+            $date = Carbon::parse($date);
+        }
         
-        return $query->whereDate('injected_at', $date);
+        return $query->whereDate('injection_date', $date->toDateString());
     }
 
     /**
      * Scope a query to only include correction doses.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeCorrectionDoses($query)
     {
@@ -124,27 +115,21 @@ class BasalDose extends Model
     }
 
     /**
-     * Get the formatted injection time.
-     */
-    public function getFormattedTimeAttribute(): string
-    {
-        return $this->injected_at->format('h:i A');
-    }
-
-    /**
-     * Get the human-readable injection site.
-     */
-    public function getInjectionSiteNameAttribute(): string
-    {
-        return self::getInjectionSiteOptions()[$this->injection_site] ?? ucfirst($this->injection_site);
-    }
-
-    /**
      * Get the dose amount with units.
      */
     public function getDoseWithUnitsAttribute(): string
     {
-        return "{$this->units} units";
+        return number_format($this->units, 2) . ' units';
+    }
+
+    /**
+     * Get the formatted date of the injection.
+     *
+     * @return string
+     */
+    public function getFormattedDateAttribute(): string
+    {
+        return $this->injection_date->format('M j, Y');
     }
 
     /**
@@ -152,12 +137,12 @@ class BasalDose extends Model
      *
      * @return string|null
      */
-    public function getTimeSinceInjectionAttribute(): ?string
+    public function getDaysSinceInjectionAttribute(): ?string
     {
-        if (!$this->injected_at) {
+        if (!$this->injection_date) {
             return null;
         }
 
-        return $this->injected_at->diffForHumans(['parts' => 2, 'short' => true]);
+        return $this->injection_date->diffForHumans(['parts' => 1]);
     }
 }
