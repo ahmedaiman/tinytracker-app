@@ -1,132 +1,47 @@
 <script setup>
+import { ref, computed } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { ref, computed, defineComponent } from 'vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { Head } from '@inertiajs/vue3';
 import Card from '@/Components/Card.vue';
-import Badge from '@/Components/Badge.vue';
-import SectionTitle from '@/Components/SectionTitle.vue';
-import StatCard from '@/Components/StatCard.vue';
-import ActivityItem from '@/Components/ActivityItem.vue';
-import ProjectCard from '@/Components/ProjectCard.vue';
-import TaskItem from '@/Components/TaskItem.vue';
-import QuickAction from '@/Components/QuickAction.vue';
-import SampleForm from './Dashboard/Partials/SampleForm.vue';
-import LineChart from '@/Components/LineChart.vue';
+import BloodGlucoseTrends from '@/Components/BloodGlucoseTrends.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SampleForm from '@/Components/SampleForm.vue';
 
-const showingSampleForm = ref(false);
-
-const chartData = ref({
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-  datasets: [
-    {
-      label: 'Tasks Completed',
-      backgroundColor: 'rgba(56, 198, 246, 0.2)',
-      borderColor: '#38c6f6',
-      borderWidth: 2,
-      pointRadius: 3,
-      pointBackgroundColor: '#38c6f6',
-      pointBorderColor: '#fff',
-      pointHoverRadius: 5,
-      pointHoverBackgroundColor: '#fff',
-      pointHoverBorderColor: '#38c6f6',
-      tension: 0.4,
-      data: [65, 59, 80, 81, 56, 55, 40]
-    }
-  ]
-});
-
-const chartOptions = ref({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-        display: false,
-    },
-    tooltip: {
-        bodyFont: {
-            family: 'Figtree, sans-serif',
-        },
-        titleFont: {
-            family: 'Figtree, sans-serif',
-        }
-    }
-  },
-  scales: {
-    x: {
-      grid: {
-        display: false,
-        drawBorder: false,
-      },
-      ticks: {
-        color: '#9CA3AF', // neutral-400
-        font: {
-            family: 'Figtree, sans-serif',
-            weight: 400,
-        }
-      }
-    },
-    y: {
-      beginAtZero: true,
-      grid: {
-        color: 'rgba(255, 255, 255, 0.1)', // subtle grid lines for dark mode
-        drawBorder: false,
-      },
-      ticks: {
-        color: '#9CA3AF', // neutral-400
-        font: {
-            family: 'Figtree, sans-serif',
-            weight: 400,
-        }
-      }
-    }
-  }
-});
-
-// Mock data - replace with actual data from your backend
+// Stats for the dashboard
 const stats = [
-    {
-        name: 'Total Tasks',
-        value: '24',
-        change: '+2',
-        changeType: 'increase',
-        icon: 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z',
-        color: 'primary',
-        iconBg: 'bg-primary-100 dark:bg-primary-900/30',
-        iconColor: 'text-primary-600 dark:text-primary-400',
-    },
-    {
-        name: 'Completed',
-        value: '18',
-        change: '+5',
-        changeType: 'increase',
-        icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        color: 'success',
-        iconBg: 'bg-success-100 dark:bg-success-900/30',
-        iconColor: 'text-success-600 dark:text-success-400',
-    },
-    {
-        name: 'In Progress',
-        value: '4',
-        change: '0',
-        changeType: 'none',
-        icon: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
-        color: 'accent',
-        iconBg: 'bg-accent-100 dark:bg-accent-900/30',
-        iconColor: 'text-accent-600 dark:text-accent-400',
-    },
-    {
-        name: 'Overdue',
-        value: '2',
-        change: '-1',
-        changeType: 'decrease',
-        icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
-        color: 'danger',
-        iconBg: 'bg-danger-100 dark:bg-danger-900/30',
-        iconColor: 'text-danger-600 dark:text-danger-400',
-    },
+  {
+    name: 'Today\'s BG Checks',
+    value: '12',
+    change: '-2',
+    changeType: 'decrease',
+    icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+    color: 'success',
+    iconBg: 'bg-success-100 dark:bg-success-900/30',
+    iconColor: 'text-success-600 dark:text-success-400',
+  },
+  {
+    name: 'Insulin Doses',
+    value: '8',
+    change: '+3',
+    changeType: 'increase',
+    icon: 'M7 4.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM7 19.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM20 12a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z',
+    color: 'accent',
+    iconBg: 'bg-accent-100 dark:bg-accent-900/30',
+    iconColor: 'text-accent-600 dark:text-accent-400',
+  },
+  {
+    name: 'Carb Intake',
+    value: '200',
+    change: '0',
+    changeType: 'none',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    color: 'warning',
+    iconBg: 'bg-warning-100 dark:bg-warning-900/30',
+    iconColor: 'text-warning-600 dark:text-warning-400',
+  },
 ];
 
+// Recent activity feed
 const recentActivity = [
     {
         id: 1,
@@ -256,6 +171,8 @@ const greeting = computed(() => {
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
 });
+
+const showingSampleForm = ref(false);
 </script>
 
 <template>
@@ -276,144 +193,170 @@ const greeting = computed(() => {
                 <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
                     <div class="space-y-1">
                         <h1 class="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">{{ greeting }}, {{ $page.props.auth.user.name }}! 👋</h1>
-                        <p class="text-sm md:text-base text-neutral-600 dark:text-neutral-400">Here's what's happening with your projects today.</p>
+                        <p class="text-sm md:text-base text-neutral-600 dark:text-neutral-400">Here's your diabetes management dashboard for today.</p>
                     </div>
                     <div class="flex-shrink-0">
                         <PrimaryButton class="w-full md:w-auto justify-center" @click="showingSampleForm = true">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5 mr-1.5 md:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
-                            New Task
+                            Add Reading
                         </PrimaryButton>
                     </div>
                 </div>
 
                 <!-- Stats Grid -->
                 <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard
-                        v-for="stat in stats"
-                        :key="stat.name"
-                        :name="stat.name"
-                        :value="stat.value"
-                        :change="stat.change"
-                        :change-type="stat.changeType"
-                        :icon="stat.icon"
-                        :color="stat.color"
-                        :icon-bg="stat.iconBg"
-                        :icon-color="stat.iconColor"
-                        class="h-full"
-                    />
+                    <div v-for="stat in stats" :key="stat.name" class="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm rounded-xl p-4 border border-neutral-200/50 dark:border-neutral-700/50">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ stat.name }}</div>
+                            <div :class="[stat.iconBg, 'p-1.5 rounded-lg']">
+                                <svg :class="[stat.iconColor, 'h-4 w-4']" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="stat.icon" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex items-baseline">
+                            <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stat.value }}</div>
+                            <span v-if="stat.change !== '0'" :class="[
+                                stat.changeType === 'increase' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
+                                'ml-2 text-xs font-medium'
+                            ]">
+                                {{ stat.changeType === 'increase' ? '↑' : '↓' }} {{ stat.change }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Main Content -->
             <div class="space-y-6">
-                <!-- Task Completion Chart -->
-                <Card title="Task Completion" class="flex-1 flex flex-col" :show-header="true">
-                    <template #header-actions>
-                        <span class="text-sm font-medium text-neutral-500 dark:text-neutral-400">Last 7 months</span>
-                    </template>
-                    <div class="h-80 p-4">
-                        <LineChart :chart-data="chartData" :chart-options="chartOptions" />
+                <!-- Blood Glucose Chart -->
+                <Card title="Blood Glucose" class="flex-1 flex flex-col" :show-header="true">
+                    <BloodGlucoseTrends />
+                </Card>
+
+                <!-- Daily Goals & Progress -->
+                <Card title="Daily Goals" class="flex-1 flex flex-col" :show-header="true">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 p-2">
+                        <!-- Blood Glucose Checks -->
+                        <div class="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm rounded-xl p-4 border border-neutral-200/50 dark:border-neutral-700/50">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">BG Checks</h3>
+                                <span class="text-xs font-medium text-blue-600 dark:text-blue-400">3/5</span>
+                            </div>
+                            <div class="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-1.5">
+                                <div class="bg-blue-600 h-1.5 rounded-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Meals Tracked -->
+                        <div class="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm rounded-xl p-4 border border-neutral-200/50 dark:border-neutral-700/50">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Meals</h3>
+                                <span class="text-xs font-medium text-green-600 dark:text-green-400">2/3</span>
+                            </div>
+                            <div class="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-1.5">
+                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 66%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Insulin Doses -->
+                        <div class="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm rounded-xl p-4 border border-neutral-200/50 dark:border-neutral-700/50">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Insulin</h3>
+                                <span class="text-xs font-medium text-purple-600 dark:text-purple-400">4/4</span>
+                            </div>
+                            <div class="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-1.5">
+                                <div class="bg-purple-600 h-1.5 rounded-full" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Activity -->
+                        <div class="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm rounded-xl p-4 border border-neutral-200/50 dark:border-neutral-700/50">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Activity</h3>
+                                <span class="text-xs font-medium text-yellow-600 dark:text-yellow-400">30/60 min</span>
+                            </div>
+                            <div class="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-1.5">
+                                <div class="bg-yellow-500 h-1.5 rounded-full" style="width: 50%"></div>
+                            </div>
+                        </div>
                     </div>
                 </Card>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Left Column -->
                     <div class="lg:col-span-2 space-y-6 flex flex-col">
-                        <!-- Recent Activity -->
-                        <Card title="Recent Activity" class="flex flex-col" :show-header="true">
-                            <template #header-actions>
-                                <Link href="#" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors inline-flex items-center">
-                                    View all
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </Link>
-                            </template>
-                            <div class="flex-1 overflow-y-auto max-h-[250px] -mx-1 px-1 py-2">
-                                <div class="space-y-1 px-3">
-                                    <ActivityItem
-                                        v-for="activity in recentActivity"
-                                        :key="activity.id"
-                                        :id="activity.id"
-                                        :user="activity.user"
-                                        :action="activity.action"
-                                        :target="activity.target"
-                                        :time="activity.time"
-                                        class="px-2 py-2"
-                                        @view="() => {}"
-                                    />
+                        <!-- Recent Blood Glucose Readings -->
+                        <Card title="Recent Readings" class="flex flex-col" :show-header="true">
+                            <div class="flex-1 -mx-1 py-1">
+                                <div class="space-y-2">
+                                    <div v-for="i in 5" :key="i" class="flex items-center justify-between p-3 rounded-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                                        <div class="flex items-center space-x-3">
+                                            <div :class="[
+                                                'p-1.5 rounded-lg',
+                                                [95, 110, 120, 130, 115][i-1] < 100 ? 'bg-green-100/50 dark:bg-green-900/20 text-green-600 dark:text-green-400' :
+                                                [95, 110, 120, 130, 115][i-1] < 140 ? 'bg-yellow-100/50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400' :
+                                                'bg-red-100/50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                                            ]">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-semibold" :class="{
+                                                'text-green-600 dark:text-green-400': [95, 110, 120, 130, 115][i-1] < 100,
+                                                'text-yellow-600 dark:text-yellow-400': [95, 110, 120, 130, 115][i-1] >= 100 && [95, 110, 120, 130, 115][i-1] < 140,
+                                                'text-red-600 dark:text-red-400': [95, 110, 120, 130, 115][i-1] >= 140
+                                            }">
+                                                {{ [95, 110, 120, 130, 115][i-1] }} <span class="text-xs font-normal text-gray-500 dark:text-gray-400">mg/dL</span>
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </Card>
-
-                        <!-- Projects Overview -->
-                        <Card title="Projects Overview" class="flex-1 flex flex-col" :show-header="true">
-                            <template #header-actions>
-                                <Link href="#" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors inline-flex items-center">
-                                    View all
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        
+                        <!-- Next Dose Card -->
+                        <Card class="flex flex-col" :show-header="false">
+                            <div class="flex items-center">
+                                <div class="p-1.5 rounded-lg bg-yellow-100/50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                </Link>
-                            </template>
-                            <div class="space-y-4">
-                                <ProjectCard
-                                    v-for="project in projects"
-                                    :key="project.id"
-                                    :id="project.id"
-                                    :name="project.name"
-                                    :description="project.description"
-                                    :progress="project.progress"
-                                    :status="project.status"
-                                    :members="project.members"
-                                    :due-date="project.dueDate"
-                                    :color="project.color"
-                                    :icon="project.icon"
-                                    class="border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
-                                    @view="() => {}"
-                                    @edit="() => {}"
-                                    @delete="() => {}"
-                                />
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Next Dose</p>
+                                    <p class="text-lg font-semibold text-gray-900 dark:text-white">7:30 PM</p>
+                                </div>
                             </div>
                         </Card>
                     </div>
                     <!-- Right Column -->
                     <div class="space-y-6 flex flex-col">
-                        <!-- Upcoming Tasks -->
-                        <Card title="Upcoming Tasks" class="flex-1 flex flex-col" :show-header="true">
-                            <template #header-actions>
-                                <Link href="#" class="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors inline-flex items-center">
-                                    View all
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </Link>
-                            </template>
-                            <div class="px-0 py-3 w-full">
-                                <div class="space-y-3 w-full">
-                                    <div
-                                        v-for="task in upcomingTasks"
-                                        :key="task.id"
-                                        class="transition-transform hover:-translate-y-0.5 w-full"
-                                    >
-                                        <TaskItem
-                                            :id="task.id"
-                                            :title="task.title"
-                                            :due-date="task.due"
-                                            :priority="task.priority"
-                                            :project="task.project"
-                                            :progress="task.progress"
-                                            :completed="false"
-                                            show-project
-                                            show-actions
-                                            class="w-full bg-white/50 dark:bg-neutral-800/30 backdrop-blur-sm hover:shadow-sm transition-shadow"
-                                            @view="() => {}"
-                                            @edit="() => {}"
-                                            @delete="() => {}"
-                                            @complete="() => {}"
-                                        />
+                        <!-- Upcoming Appointments -->
+                        <Card title="Appointments" class="flex-1 flex flex-col" :show-header="true">
+                            <div class="flex-1 -mx-1 py-1">
+                                <div class="space-y-2">
+                                    <div v-for="i in 3" :key="i" class="flex items-center p-3 rounded-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                                        <div class="p-1.5 rounded-lg bg-indigo-100/50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3 flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ ['Endocrinologist', 'Dentist', 'Eye Exam'][i-1] }}</p>
+                                            <div class="flex items-center mt-0.5">
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ ['Dr. Smith', 'Dr. Johnson', 'Dr. Williams'][i-1] }}</span>
+                                                <span class="mx-1.5 text-gray-300 dark:text-gray-600">•</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ ['Tomorrow 10:00 AM', 'Friday 2:30 PM', 'Next Monday 11:15 AM'][i-1] }}</span>
+                                            </div>
+                                        </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                        </svg>
                                     </div>
                                 </div>
                             </div>
@@ -421,58 +364,53 @@ const greeting = computed(() => {
 
                         <!-- Quick Actions -->
                         <Card title="Quick Actions" class="h-full flex flex-col" :show-header="true">
-                            <div class="p-3 flex-1">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <QuickAction
-                                        title="New Task"
-                                        icon="M12 4v16m8-8H4"
-                                        color="primary"
-                                        description="Create a new task"
-                                        @click="() => {}"
-                                    />
-
-                                    <QuickAction
-                                        title="Export"
-                                        icon="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                        color="emerald"
-                                        description="Export your data"
-                                        @click="() => {}"
-                                    />
-
-                                    <QuickAction
-                                        title="Settings"
-                                        icon="M10.325 4.317c-.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                                        color="accent"
-                                        description="Configure app settings"
-                                        @click="() => {}"
-                                    />
-
-                                    <QuickAction
-                                        title="Help"
-                                        icon="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                        color="purple"
-                                        description="Get help and support"
-                                        @click="() => {}"
-                                    />
+                            <div class="p-2 flex-1">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button @click="showingSampleForm = true" class="flex flex-col items-center justify-center p-3 rounded-xl bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm border border-neutral-200/50 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                                        <div class="p-1.5 rounded-lg bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </div>
+                                        <p class="mt-1.5 text-xs font-medium text-gray-700 dark:text-gray-200">Add BG</p>
+                                    </button>
+                                    
+                                    <button class="flex flex-col items-center justify-center p-3 rounded-xl bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm border border-neutral-200/50 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                                        <div class="p-1.5 rounded-lg bg-green-100/50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                        </div>
+                                        <p class="mt-1.5 text-xs font-medium text-gray-700 dark:text-gray-200">Add Meal</p>
+                                    </button>
+                                    
+                                    <button class="flex flex-col items-center justify-center p-3 rounded-xl bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm border border-neutral-200/50 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                                        <div class="p-1.5 rounded-lg bg-purple-100/50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                        </div>
+                                        <p class="mt-1.5 text-xs font-medium text-gray-700 dark:text-gray-200">Add Insulin</p>
+                                    </button>
+                                    
+                                    <button class="flex flex-col items-center justify-center p-3 rounded-xl bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm border border-neutral-200/50 dark:border-neutral-700/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-700/30 transition-colors">
+                                        <div class="p-1.5 rounded-lg bg-yellow-100/50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                        </div>
+                                        <p class="mt-1.5 text-xs font-medium text-gray-700 dark:text-gray-200">Add Activity</p>
+                                    </button>
                                 </div>
 
-                                <div class="mt-4">
-                                    <PrimaryButton size="sm" @click="showingSampleForm = true">
-                                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1.5a4.5 4.5 0 014.5-4.5h3a4.5 4.5 0 014.5 4.5V21zM19 8v3m0 3v-3m-3 0h3m3 0h-3" />
-                                </svg>
-                                New Task
-                            </PrimaryButton>
+                                <div class="mt-3">
+                                    <button class="w-full flex items-center justify-center px-3 py-2 rounded-xl text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Quick Add
+                                    </button>
                                 </div>
-                            </div>
-
-                            <div class="mt-4">
-                                <PrimaryButton size="sm" @click="showingSampleForm = true">
-                            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1.5a4.5 4.5 0 014.5-4.5h3a4.5 4.5 0 014.5 4.5V21zM19 8v3m0 3v-3m-3 0h3m3 0h-3" />
-                            </svg>
-                            New Task
-                        </PrimaryButton>
                             </div>
                         </Card>
                     </div>

@@ -1,5 +1,15 @@
 <template>
-  <Line :data="chartData" :options="chartOptions" />
+  <div class="w-full h-full relative mt-4">
+    <Line 
+      :data="chartData" 
+      :options="{
+        ...chartOptions,
+        responsive: true,
+        maintainAspectRatio: false,
+      }"
+      class="w-full h-full"
+    />
+  </div>
 </template>
 
 <script>
@@ -14,6 +24,7 @@ import {
   Legend
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
+import annotationPlugin from 'chartjs-plugin-annotation';
 
 ChartJS.register(
   CategoryScale,
@@ -22,7 +33,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  annotationPlugin
 )
 
 export default {

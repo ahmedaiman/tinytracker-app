@@ -1,6 +1,7 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
+import plugin from 'tailwindcss/plugin';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -141,5 +142,34 @@ export default {
         },
     },
 
-    plugins: [forms, typography],
+    plugins: [
+        forms, 
+        typography,
+        plugin(function({ addUtilities }) {
+            addUtilities({
+                '.scrollbar-thin': {
+                    'scrollbar-width': 'thin',
+                    'scrollbar-color': '#9ca3af transparent',
+                },
+                '.scrollbar-thin::-webkit-scrollbar': {
+                    'height': '6px',
+                    'width': '6px',
+                },
+                '.scrollbar-thin::-webkit-scrollbar-track': {
+                    'background': 'transparent',
+                },
+                '.scrollbar-thin::-webkit-scrollbar-thumb': {
+                    'background-color': '#9ca3af',
+                    'border-radius': '20px',
+                },
+                // Dark mode styles
+                '.dark .scrollbar-thin': {
+                    'scrollbar-color': '#4b5563 transparent',
+                },
+                '.dark .scrollbar-thin::-webkit-scrollbar-thumb': {
+                    'background-color': '#4b5563',
+                },
+            });
+        }),
+    ],
 };
