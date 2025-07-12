@@ -49,7 +49,7 @@
                       v-model="form.glucose_level"
                       type="number"
                       step="0.1"
-                      class="block w-full rounded-lg border-0 bg-white/50 dark:bg-neutral-700/50 py-2.5 pl-4 pr-10 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-1 dark:focus:ring-offset-neutral-800 sm:text-sm sm:leading-6 transition-all duration-200 border border-neutral-200/50 dark:border-neutral-700/50"
+                      class="block w-full rounded-lg shadow-sm transition-all duration-200 bg-white dark:bg-neutral-800 px-3 py-2 text-sm h-9 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white focus:border-primary-400 dark:focus:border-primary-400 focus:ring-2 focus:ring-offset-1 focus:ring-primary-100 dark:focus:ring-primary-900/30 dark:focus:ring-offset-neutral-900 placeholder-neutral-400 dark:placeholder-neutral-500"
                       placeholder="e.g. 120"
                       required
                     />
@@ -69,7 +69,7 @@
                         ref="dateTimeInput"
                         v-model="form.reading_time"
                         type="datetime-local"
-                        class="block w-full rounded-lg border-0 bg-white/50 dark:bg-neutral-700/50 py-2.5 pl-4 pr-10 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-1 dark:focus:ring-offset-neutral-800 sm:text-sm sm:leading-6 transition-all duration-200 border border-neutral-200/50 dark:border-neutral-700/50 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                        class="block w-full rounded-lg shadow-sm transition-all duration-200 bg-white dark:bg-neutral-800 px-3 py-2 text-sm h-9 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white focus:border-primary-400 dark:focus:border-primary-400 focus:ring-2 focus:ring-offset-1 focus:ring-primary-100 dark:focus:ring-primary-900/30 dark:focus:ring-offset-neutral-900 placeholder-neutral-400 dark:placeholder-neutral-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                         style="color-scheme: light dark;"
                         required
                       />
@@ -100,7 +100,7 @@
                       id="notes"
                       v-model="form.notes"
                       rows="3"
-                      class="block w-full rounded-lg border-0 bg-white/50 dark:bg-neutral-700/50 py-2.5 px-4 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-1 dark:focus:ring-offset-neutral-800 sm:text-sm sm:leading-6 transition-all duration-200 border border-neutral-200/50 dark:border-neutral-700/50"
+                      class="block w-full rounded-lg shadow-sm transition-all duration-200 bg-white dark:bg-neutral-800 px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white focus:border-primary-400 dark:focus:border-primary-400 focus:ring-2 focus:ring-offset-1 focus:ring-primary-100 dark:focus:ring-primary-900/30 dark:focus:ring-offset-neutral-900 placeholder-neutral-400 dark:placeholder-neutral-500"
                       placeholder="Add any additional notes..."
                     ></textarea>
                   </div>
